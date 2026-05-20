@@ -95,7 +95,7 @@ public:
                     }
                   }
                 },
-                [&](const QString &text) { result.parts.emplace_back(ResultPart(text, false)); }};
+                [&](const QString &text) { result.parts.emplace_back(ResultPart(processEscapeSequences(text), false)); }};
     }
 
     return result;
@@ -103,6 +103,33 @@ public:
 
 private:
   static constexpr int SHELL_TIMEOUT_MS = 2000;
+
+  static QString processEscapeSequences(const QString &text) {
+    QString result;
+    result.reserve(text.size());
+
+    for (int i = 0; i < text.size(); ++i) {
+      if (text[i] == '\\' && i + 1 < text.size()) {
+        const QChar next = text[i + 1];
+        if (next == 't') {
+          result.append('\t');
+          ++i;
+        } else if (next == 'n') {
+          result.append('\n');
+          ++i;
+        } else if (next == '\\') {
+          result.append('\\');
+          ++i;
+        } else {
+          result.append(text[i]);
+        }
+      } else {
+        result.append(text[i]);
+      }
+    }
+
+    return result;
+  }
 
   // FIXME: maybe we should execute this in a fully asynchronous manner, meaning the expansion itself
   // should be asynchronous. For most use cases it's fine to block, even if it timeouts it will only lock down
