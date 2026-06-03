@@ -11,6 +11,12 @@ SYSTEMD_SERVICE_NAME="vicinae.service"
 # Installation prefix - can be overridden via environment or --prefix flag
 PREFIX="${PREFIX:-/usr/local}"
 
+# Quiet mode - suppress decorative output
+QUIET=false
+
+# Assume yes - auto-accept prompts
+ASSUME_YES=false
+
 # Derived paths based on PREFIX
 INSTALL_DIR="$PREFIX/lib/vicinae"
 BIN_DIR="$PREFIX/bin"
@@ -28,10 +34,16 @@ PRESERVE_FILES=()
 WARNINGS=()
 
 warn() {
-  echo -e "  \033[1;33m⚠ WARNING:\033[0m $1" >&2
+  if [[ "$QUIET" == "false" ]]; then
+    echo -e "  \033[1;33m⚠ WARNING:\033[0m $1" >&2
+  fi
   WARNINGS+=("$1")
 }
-ok() { echo -e "  \033[0;32m✓\033[0m $1" >&2; }
+ok() {
+  if [[ "$QUIET" == "false" ]]; then
+    echo -e "  \033[0;32m✓\033[0m $1" >&2
+  fi
+}
 
 cleanup() {
 	rm -f $VICINAE_SCRIPT_PATH
@@ -137,8 +149,13 @@ check_permissions() {
 			echo "  1. Re-run this script with $escalation_name: we will prompt you for your password (recommended)"
 			echo "  2. Install to a custom, local directory: full documentation available at ${DOCS_URL}"
 			echo ""
-			read -p "Would you like to continue with $escalation_name? [y/N] " -n 1 -r < /dev/tty
-			echo
+
+			if [[ "$ASSUME_YES" == "true" ]]; then
+				REPLY="y"
+			else
+				read -p "Would you like to continue with $escalation_name? [y/N] " -n 1 -r < /dev/tty
+				echo
+			fi
 
 			if [[ ! $REPLY =~ ^[Yy]$ ]]; then
 			echo "Installation cancelled."
@@ -627,6 +644,8 @@ show_usage() {
 	echo "Options:"
 	echo "  --prefix PATH  Installation prefix (default: /usr/local)"
 	echo "  --uninstall    Uninstall Vicinae"
+	echo "  --quiet, -q    Suppress decorative output"
+	echo "  --yes, -y      Auto-accept prompts"
 	echo "  --help, -h     Show this help message"
 	echo ""
 	echo "Environment variables:"
@@ -647,8 +666,6 @@ self_download() {
 }
 
 main() {
-	renderIcon
-
 	# Save original arguments for potential re-execution with sudo/doas
 	ORIGINAL_ARGS=("$@")
 	
@@ -679,6 +696,14 @@ main() {
 			show_usage
 			exit 0
 			;;
+		--quiet | -q)
+			QUIET=true
+			shift
+			;;
+		--yes | -y)
+			ASSUME_YES=true
+			shift
+			;;
 		*)
 			echo "Error: Unknown option '$1'"
 			show_usage
@@ -686,7 +711,11 @@ main() {
 			;;
 		esac
 	done
-	
+
+	if [[ "$QUIET" == "false" ]]; then
+		renderIcon
+	fi
+
 	# Handle actions
 	if [[ "$action" == "uninstall" ]]; then
 		check_permissions
@@ -739,9 +768,13 @@ main() {
 			done
 		fi
 
-		echo 
-		echo "🎉 Vicinae $latest_version has been successfully installed!"
-		echo 
+		echo
+		if [[ "$QUIET" == "false" ]]; then
+			echo "🎉 Vicinae $latest_version has been successfully installed!"
+		else
+			echo "Vicinae $latest_version has been successfully installed."
+		fi
+		echo
 
 		# Check if binary directory is in PATH
 		if [[ ":$PATH:" == *":$BIN_DIR:"* ]]; then
