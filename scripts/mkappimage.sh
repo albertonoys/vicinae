@@ -27,4 +27,9 @@ export QML_SOURCES_PATHS=$PWD/src/server/src/qml/qml
 export EXTRA_PLATFORM_PLUGINS=libqwayland.so
 export EXTRA_QT_PLUGINS=waylandcompositor
 
-linuxdeploy --appdir $APPDIR --executable $APPDIR/usr/bin/vicinae --executable $APPDIR/usr/libexec/vicinae/vicinae-server --plugin qt --output appimage
+EXECUTABLE_ARGS=(--executable "$APPDIR/usr/bin/vicinae")
+for bin in "$APPDIR"/usr/libexec/vicinae/*; do
+	[ -x "$bin" ] && EXECUTABLE_ARGS+=(--executable "$bin")
+done
+
+linuxdeploy --appdir $APPDIR "${EXECUTABLE_ARGS[@]}" --plugin qt --output appimage
